@@ -15,6 +15,8 @@ int relay_state = 0;
 
 // select the pins used on the LCD panel
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#define BACKLIGHT_PIN 10    // Backlight PWM pin
+int backlight = 32;        // PWM value for backlight (0-255)
 
 // define some values used by the panel and buttons
 int lcd_key     = 0;
@@ -87,6 +89,18 @@ void init_display()
  lcd.print("Set: ");
 }
 
+void set_backlight()
+{
+	if (backlight < 0) {
+		backlight = 0;
+	} else if (backlight > 255) {
+		backlight = 255;
+	}
+
+	analogWrite(BACKLIGHT_PIN, backlight);
+
+}
+
 void setup()
 {
  pinMode(RELAYPIN, OUTPUT);
@@ -94,6 +108,8 @@ void setup()
  lcd.begin(16, 2);              // start the library
  dht.begin();
  init_display();
+ pinMode(BACKLIGHT_PIN, OUTPUT);
+ set_backlight();
 }
  
 void loop()
@@ -107,6 +123,20 @@ void loop()
 
  switch (lcd_key)               // depending on which button was pushed, we perform an action
  {
+   case btnRIGHT:
+     {
+     backlight += 16;
+     set_backlight();
+     delay(BTNDELAY);
+     break;
+     }
+   case btnLEFT:
+     {
+     backlight -= 16;
+     set_backlight();
+     delay(BTNDELAY);
+     break;
+     }
    case btnUP:
      {
      //lcd.print("UP    ");
