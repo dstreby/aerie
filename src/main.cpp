@@ -11,21 +11,27 @@ DHT dht = DHT(DHTPIN, DHTTYPE);
 // Initialize / define vars for the temperature readings
 #define T_LENGTH 10 // Number of temperatures to use for averaging
 #define T_DELAY 2000 // wait between tem readings (the sensor is slow)
-unsigned long t_last_read = 0; // Keep track of the last time the temp was read
-int t_index = -1; // Start the index at -1 so we can catch it the first time around and pad the array
-float temp[T_LENGTH];	// We'll use an array of floats to generate the average temp
-float temp_avg = 0;
-int humid = 0;
-int temp_set = 65;
+struct Temperature {
+	int index;
+	float reading[T_LENGTH];
+	float average;
+	unsigned long last_read;
+	int set_point;
+	int humidity;
+};
+struct Temperature temperature = {-1, {0}, 0, 0, 65, 0};
 
 // Setup for the relay
 #define RELAYPIN 3    // Pin D3
 #define RELAY_ON 1
 #define RELAY_OFF 0
 #define RELAY_DELAY 300000 // 300,000 ms (5 minute) delay
-int relay_state = RELAY_OFF;
-int relay_desired_state = RELAY_OFF;
-unsigned long relay_last_change = 0;
+struct Relay {
+	int actual_state;
+	int desired_state;
+	unsigned long last_change;
+};
+struct Relay relay = {RELAY_OFF, RELAY_OFF, 0};
 
 // select the pins used on the LCD panel
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -81,7 +87,7 @@ int read_LCD_buttons()
 float get_temp()
 {
 	float temp_reading = dht.readTemperature(READ_F);
-	t_last_read = millis();
+	temperature.last_read = millis();
 	// Sanity check the returned value; fail to 0
 	return isnan(temp_reading) ? 0 : temp_reading;
 }
@@ -89,72 +95,72 @@ float get_temp()
 void calculate_temp()
 {
 	// Check our startup boundary condition
-	if (t_index == -1) {
+	if (temperature.index == -1) {
 		float temp_current = get_temp();
 		for(int i = 0; i < T_LENGTH; i++) {
-			temp[i] = temp_current;
+			temperature.reading[i] = temp_current;
 		}
-		t_index = 0;
-		temp_avg = temp_current;
+		temperature.index = 0;
+		temperature.average = temp_current;
 	} else {
 		// Check if we've waited long enough for the next reading
-		if ((millis() - t_last_read) >= T_DELAY) {
+		if ((millis() - temperature.last_read) >= T_DELAY) {
 			// Increment the array index; reset to 0 if we're over the end
-			if (++t_index >= T_LENGTH) {
-				t_index = 0;
+			if (++temperature.index >= T_LENGTH) {
+				temperature.index = 0;
 			}
 
 			float temp_current = get_temp();
-			temp[t_index] = temp_current;
+			temperature.reading[temperature.index] = temp_current;
 
 			// Get the average temp from the array (last T_LENGTH readings)
 			float temp_sum = 0;
 			for(int j = 0; j < T_LENGTH; j++) {
-				temp_sum += temp[j];
+				temp_sum += temperature.reading[j];
 			}
-			temp_avg = temp_sum / T_LENGTH;
+			temperature.average = temp_sum / T_LENGTH;
 		}
 	}
 
 	// Read the humidity (no fancy processing, we don't really care about it much)
-	humid = round(dht.readHumidity());
+	temperature.humidity = round(dht.readHumidity());
 }
 
 void printtemp()
 {
 	lcd.setCursor(6,0);
-	lcd.print(round(temp_avg));
+	lcd.print(round(temperature.average));
 	lcd.print("F ");
-	lcd.print(humid);
+	lcd.print(temperature.humidity);
 	lcd.print("%   ");
 }
 
 void printtemp_set()
 {
 	lcd.setCursor(6,1);            // move cursor to second line "1" and 6 spaces over
-	lcd.print(temp_set);
+	lcd.print(temperature.set_point);
 	lcd.write('   ');              // Super lazy way to make sure the line is cleared after the temp_set
 }
 
 void setrelay()
 {
-	if (temp_set > temp_avg) {
+	if (temperature.set_point > temperature.average) {
 		// Actual temp lower than desired temp, we want the heat on
-		relay_desired_state = RELAY_ON;
+		relay.desired_state = RELAY_ON;
 	} else {
 		// Actual temp equal to, or higher than desired temp, we want the heat off
-		relay_desired_state = RELAY_OFF;
+		relay.desired_state = RELAY_OFF;
 	}
 
-	if (relay_desired_state != relay_state) {
+	if (relay.desired_state != relay.actual_state) {
 		// Desired state difers from actual state; flip the actual state
 		lcd.setCursor(10,1);
-		if ((millis() - relay_last_change) >= RELAY_DELAY) {
-			relay_state = relay_desired_state;
-			digitalWrite(RELAYPIN, relay_state);
-			relay_last_change = millis();
+		if ((millis() - relay.last_change) >= RELAY_DELAY) {
+			relay.actual_state = relay.desired_state;
+			digitalWrite(RELAYPIN, relay.actual_state);
+			relay.last_change = millis();
 			// Display the relay state
-			if (relay_state == RELAY_ON) {
+			if (relay.actual_state == RELAY_ON) {
 				lcd.print("ON ");
 			} else {
 				lcd.print("OFF");
@@ -177,7 +183,7 @@ void setup()
 	set_backlight();
 	// Fake the first relay state change so we can change the relay state 
 	// without waiting 5 minutes after startup
-	relay_last_change = millis() - RELAY_DELAY;
+	relay.last_change = millis() - RELAY_DELAY;
 	lcd.setCursor(10,1);
 	lcd.print("OFF");
 }
@@ -209,14 +215,14 @@ void loop()
 			}
 		case btnUP:
 			{
-				temp_set++;
+				temperature.set_point++;
 				printtemp_set();
 				delay(BTNDELAY);
 				break;
 			}
 		case btnDOWN:
 			{
-				temp_set--;
+				temperature.set_point--;
 				printtemp_set();
 				delay(BTNDELAY);
 				break;
