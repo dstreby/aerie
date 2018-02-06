@@ -23,9 +23,12 @@ int temp_set = 65;
 #define RELAY_ON 1
 #define RELAY_OFF 0
 #define RELAY_DELAY 300000 // 300,000 ms (5 minute) delay
-int relay_state = RELAY_OFF;
-int relay_desired_state = RELAY_OFF;
-unsigned long relay_last_change = 0;
+struct Relay {
+	int actual_state;
+	int desired_state;
+	unsigned long last_change;
+};
+struct Relay relay = {RELAY_OFF, RELAY_OFF, 0};
 
 // select the pins used on the LCD panel
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -140,21 +143,21 @@ void setrelay()
 {
 	if (temp_set > temp_avg) {
 		// Actual temp lower than desired temp, we want the heat on
-		relay_desired_state = RELAY_ON;
+		relay.desired_state = RELAY_ON;
 	} else {
 		// Actual temp equal to, or higher than desired temp, we want the heat off
-		relay_desired_state = RELAY_OFF;
+		relay.desired_state = RELAY_OFF;
 	}
 
-	if (relay_desired_state != relay_state) {
+	if (relay.desired_state != relay.actual_state) {
 		// Desired state difers from actual state; flip the actual state
 		lcd.setCursor(10,1);
-		if ((millis() - relay_last_change) >= RELAY_DELAY) {
-			relay_state = relay_desired_state;
-			digitalWrite(RELAYPIN, relay_state);
-			relay_last_change = millis();
+		if ((millis() - relay.last_change) >= RELAY_DELAY) {
+			relay.actual_state = relay.desired_state;
+			digitalWrite(RELAYPIN, relay.actual_state);
+			relay.last_change = millis();
 			// Display the relay state
-			if (relay_state == RELAY_ON) {
+			if (relay.actual_state == RELAY_ON) {
 				lcd.print("ON ");
 			} else {
 				lcd.print("OFF");
@@ -177,7 +180,7 @@ void setup()
 	set_backlight();
 	// Fake the first relay state change so we can change the relay state 
 	// without waiting 5 minutes after startup
-	relay_last_change = millis() - RELAY_DELAY;
+	relay.last_change = millis() - RELAY_DELAY;
 	lcd.setCursor(10,1);
 	lcd.print("OFF");
 }
