@@ -1,6 +1,8 @@
 // Set up the DHT temp/humidity sensor
+#ifndef  DHTTYPE
+#define  DHTTYPE DHT22                          /* Default to DHT22 */
+#endif                                          /* ----- #ifndef DHTTYPE  ----- */
 #define DHTPIN 2        // Pin D2
-#define DHTTYPE DHT11   // DHT 11
 #define READ_F true
 
 // Initialize / define vars for the temperature readings
