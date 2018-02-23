@@ -2,6 +2,7 @@
 #ifndef  DHTTYPE
 #define  DHTTYPE DHT22                          /* Default to DHT22 */
 #endif                                          /* ----- #ifndef DHTTYPE  ----- */
+
 #define DHTPIN 2        // Pin D2
 #define READ_F true
 
@@ -32,6 +33,26 @@ struct Relay {
 #define BACKLIGHT_PIN 10    // Backlight PWM pin
 
 // define some values used by the panel and buttons
+/* The display / button module has two versions with differing
+ * button press voltages. We'll default to Version 1.0 values,
+ * but set values for Version 2.0 if DISPLAY_V2 is defined
+ */
+#ifndef DISPLAY_V2
+#define THRESH_RIGHT	50
+#define THRESH_UP			195
+#define THRESH_DOWN		380
+#define THRESH_LEFT		555
+#define THRESH_SELECT	790
+#define THRESH_NONE		1000
+#else
+#define THRESH_RIGHT	50
+#define THRESH_UP			250
+#define THRESH_DOWN		450
+#define THRESH_LEFT		650
+#define THRESH_SELECT	850
+#define THRESH_NONE		1000
+#endif																					/* ----- #ifndef DISPLAY_V2 -----*/
+
 #define btnRIGHT  0
 #define btnUP     1
 #define btnDOWN   2
