@@ -2,6 +2,7 @@
 #include <LiquidCrystal.h>
 #include <DHT.h>
 #include "main.h"
+#include "debugutils.h"
 
 // Initialize global structs
 struct Temperature temperature = {-1, {0}, 0, 0, 65, 0};
@@ -58,6 +59,7 @@ float get_temp()
 void calculate_temp()
 {
   // Check our startup boundary condition
+  //TODO: Move this to setup()
   if (temperature.index == -1) {
     float temp_current = get_temp();
     for(int i = 0; i < T_LENGTH; i++) {
@@ -82,6 +84,9 @@ void calculate_temp()
         temp_sum += temperature.reading[j];
       }
       temperature.average = temp_sum / T_LENGTH;
+
+      DEBUGPRINTLN( temp_current, DEC );
+      DEBUGPRINTLN( temperature.average, DEC );
     }
   }
 
@@ -137,6 +142,8 @@ void setrelay()
 
 void setup()
 {
+  Serial.begin( 9600 );
+  DEBUGPRINTLN( "begin setup" );
   pinMode(RELAYPIN, OUTPUT);
   digitalWrite(RELAYPIN, LOW);    // init the relay to 'OFF'
   lcd.begin(16, 2);               // start the library
